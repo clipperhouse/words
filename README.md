@@ -1,6 +1,4 @@
-`words` is a command which splits strings into individual words, as [defined by Unicode](https://unicode.org/reports/tr29/).
-
-It accepts text from stdin, and writes one word (token) per line to stdout.
+`words` is a command which splits strings into individual words, as [defined by Unicode](https://unicode.org/reports/tr29/). It accepts text from stdin, and writes one word (token) per line to stdout.
 
 ### Install
 

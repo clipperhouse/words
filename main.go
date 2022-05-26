@@ -31,18 +31,7 @@ func main() {
 	}
 
 	if !config.HasIn {
-		message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
-		message += "\nDetails:\n"
-		message += "  words accepts std in, splits into one word (token) per line,\n"
-		message += "  and writes to std out\n\n"
-		message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
-		message += "  by default, only tokens containing one or more letters,\n"
-		message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
-		message += "  whitespace and punctuation tokens are omitted"
-
-		flag.Usage()
-
-		os.Stderr.WriteString(message)
+		printUsage()
 		goto finish
 	}
 
@@ -53,8 +42,7 @@ func main() {
 
 finish:
 	// Finish up
-	final := []byte("\n")
-	_, err = config.Out.Write(final)
+	_, err = config.Out.WriteString("\n")
 	if err != nil {
 		handle(err)
 	}
@@ -130,4 +118,19 @@ func writeWords(c *config) error {
 
 func handle(err error) {
 	log.Fatalln(err)
+}
+
+func printUsage() {
+	message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
+	message += "\nDetails:\n"
+	message += "  words accepts stdin, splits into one word (token) per line,\n"
+	message += "  and writes to stdout\n\n"
+	message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
+	message += "  by default, only tokens containing one or more letters,\n"
+	message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
+	message += "  whitespace and punctuation tokens are omitted"
+
+	flag.Usage()
+
+	os.Stderr.WriteString(message)
 }
