@@ -2,18 +2,26 @@ package main
 
 import (
 	"bufio"
+	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/clipperhouse/uax29/iterators/filter"
 	"github.com/clipperhouse/uax29/words"
 )
 
+var all = flag.Bool("all", false, "include all tokens, such as whitespace and punctuation, not just 'words'")
+var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
+you can use escaped literals like "\t".`)
+
 type config struct {
 	In        *bufio.Reader
 	HasIn     bool
-	Delimiter []byte
+	Delimiter string
 	Out       *bufio.Writer
+	All       bool
 }
 
 func main() {
@@ -23,8 +31,18 @@ func main() {
 	}
 
 	if !config.HasIn {
-		message := "words handles piped input, splits into one word per line, and outputs to std out. use cat or echo to get started."
-		config.Out.WriteString(message)
+		message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
+		message += "\nDetails:\n"
+		message += "  words accepts std in, splits into one word (token) per line,\n"
+		message += "  and writes to std out\n\n"
+		message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
+		message += "  by default, only tokens containing one or more letters,\n"
+		message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
+		message += "  whitespace and punctuation tokens are omitted"
+
+		flag.Usage()
+
+		os.Stderr.WriteString(message)
 		goto finish
 	}
 
@@ -49,8 +67,7 @@ finish:
 
 func getConfig() (*config, error) {
 	c := &config{
-		Out:       bufio.NewWriter(os.Stdout),
-		Delimiter: []byte("\n"),
+		Out: bufio.NewWriter(os.Stdout),
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -58,10 +75,24 @@ func getConfig() (*config, error) {
 		return nil, err
 	}
 
-	piped := (fi.Mode() & os.ModeCharDevice) == 0 // https://stackoverflow.com/a/43947435/70613
+	piped := (fi.Mode() & os.ModeCharDevice) == 0 // https://stackoverflow.com/a/43947435
 	if piped {
 		c.In = bufio.NewReader(os.Stdin)
 		c.HasIn = true
+	}
+
+	flag.Parse()
+	c.All = *all
+
+	if len(*delimiter) == 0 {
+		c.Delimiter = "\n"
+	} else {
+		d, err := strconv.Unquote(`"` + *delimiter + `"`) // https://stackoverflow.com/a/59952849
+		if err != nil {
+			return nil, fmt.Errorf("couldn't parse delimiter %q: %v", *delimiter, err)
+
+		}
+		c.Delimiter = d
 	}
 
 	return c, nil
@@ -70,11 +101,14 @@ func getConfig() (*config, error) {
 func writeWords(c *config) error {
 	first := true
 	sc := words.NewScanner(c.In)
-	sc.Filter(filter.Wordlike)
+
+	if !c.All {
+		sc.Filter(filter.Wordlike)
+	}
 
 	for sc.Scan() {
 		if !first {
-			_, err := c.Out.Write(c.Delimiter)
+			_, err := c.Out.WriteString(c.Delimiter)
 			if err != nil {
 				return err
 			}
