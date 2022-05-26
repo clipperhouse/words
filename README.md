@@ -32,7 +32,7 @@ You can similarly use [`cat`](https://en.wikipedia.org/wiki/Cat_(Unix)) or [`cur
 
 ### Options
 
-To see options, just type `words` without arguments of input.
+To see options, just type `words` without arguments or input.
 
 `-all`
 
