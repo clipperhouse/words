@@ -1,8 +1,8 @@
 `words` is a command which splits strings into individual words, as [defined by Unicode](https://unicode.org/reports/tr29/). It accepts text from stdin, and writes one word (token) per line to stdout.
 
-Splitting words by the above standard is more likely to give constent results; naive splitting, such as by whitespace, may not be precise. Further, the above standard is made for many languages and scripts.
+Splitting words by the above standard is more likely to give consistent results; naïve splitting, such as by whitespace, is not precise. Further, the above standard is made for many languages and scripts.
 
-`words` might be helpful as part of a text pipeline with other transformation and search utilities.
+`words` is intended to be helpful as part of a text pipeline with other transformation and search utilities.
 
 ### Install
 
@@ -10,7 +10,7 @@ Splitting words by the above standard is more likely to give constent results; n
 go get github.com/clipperhouse/words
 ```
 
-This requires a [Go installation](https://go.dev/doc/install). Note the bit about PATH in the instructions. (It’s early days, we'll support installers like `brew` at some point.)
+This requires a [Go installation](https://go.dev/doc/install). Note the bit about PATH in the instructions. (It’s early days, we’ll support installers like `brew` at some point.)
 
 ### Example
 
@@ -34,14 +34,37 @@ You can similarly use [`cat`](https://en.wikipedia.org/wiki/Cat_(Unix)) or [`cur
 
 You’ll note that by default, it only outputs ‘words’, defined as any token containing Unicode letters, numbers or symbols; whitespace and punctution tokens are omitted. See options below.
 
+### Motivation
+
+Seems like this sort of primitive should exist!
+
+If you’ve ever had to work with ‘words’ in an application, perhaps you made the naïve mistakes that I did. Splitting on whitespace should be good enough...oh but punctuation. Oh, also quotes. Oh, and other languages & scripts. It was always around 95% right, and 5% wrong is a big number.
+
+The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is based handles the above well, across many types of text.
+
 ### Options
 
-To see options, just type `words` without arguments or input.
+To see usage, just type the `words` command without arguments or input.
 
 `-all`
 
-By default, only ‘word’ tokens will be output, omitting whitespace and punctuation tokens. Specify `-all` to output all tokens, not just ‘words’. I.e. delegate filtering to downstream systems.
+By default, only ‘word’ tokens will be returned, omitting whitespace and punctuation tokens. Specify `-all` to return all tokens, i.e. 100% of the bytes.
 
 `-delimiter`
 
 A string separator to use between output tokens, default is `"\n"`. You can use escapes like `"\t"` for tab. It’s best to quote this parameter.
+
+`-lower`
+
+Lowercase the words.
+
+`-upper`
+
+UPPERCASE the words, if you must.
+
+`-diacritics`
+
+‘Flatten’ words with diacritics, such as accents. For example, açaí → acai.
+
+
+
