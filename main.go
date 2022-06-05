@@ -84,7 +84,7 @@ func getConfig() (*config, error) {
 	c.Upper = *upper
 	c.Diacritics = *diacritics
 
-	if len(*delimiter) == 0 {
+	if !isFlagPassed("delimiter") {
 		c.Delimiter = "\n"
 	} else {
 		d, err := strconv.Unquote(`"` + *delimiter + `"`) // https://stackoverflow.com/a/59952849
@@ -159,4 +159,15 @@ func printUsage() {
 	flag.Usage()
 
 	os.Stderr.WriteString(message)
+}
+
+// https://stackoverflow.com/a/54747682
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
