@@ -64,7 +64,7 @@ finish:
 
 func getConfig() (*config, error) {
 	c := &config{
-		Out: bufio.NewWriter(os.Stdout),
+		Out: bufio.NewWriterSize(os.Stdout, 64*1024),
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -74,7 +74,7 @@ func getConfig() (*config, error) {
 
 	piped := (fi.Mode() & os.ModeCharDevice) == 0 // https://stackoverflow.com/a/43947435
 	if piped {
-		c.In = bufio.NewReader(os.Stdin)
+		c.In = bufio.NewReaderSize(os.Stdin, 64*1024)
 		c.HasIn = true
 	}
 
