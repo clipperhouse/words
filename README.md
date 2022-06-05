@@ -10,7 +10,7 @@ Binaries are available on the [Releases page](https://github.com/clipperhouse/wo
 
 --
 
-If you have a [Go installation](https://go.dev/doc/install), you can also `go get github.com/clipperhouse/words`
+If you have a [Go installation](https://go.dev/doc/install), you can also `go install github.com/clipperhouse/words`.
 
 ### Example
 
