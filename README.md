@@ -6,11 +6,11 @@ Splitting words by the above standard is more likely to give consistent results;
 
 ### Install
 
-```
-go get github.com/clipperhouse/words
-```
+Binaries are available on the [Releases page](https://github.com/clipperhouse/words/releases).
 
-This requires a [Go installation](https://go.dev/doc/install). Note the bit about PATH in the instructions. (It’s early days, we’ll support installers like `brew` at some point.)
+--
+
+If you have a [Go installation](https://go.dev/doc/install), you can also `go get github.com/clipperhouse/words`
 
 ### Example
 
