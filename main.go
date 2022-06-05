@@ -9,19 +9,28 @@ import (
 	"strconv"
 
 	"github.com/clipperhouse/uax29/iterators/filter"
+	"github.com/clipperhouse/uax29/iterators/transformer"
 	"github.com/clipperhouse/uax29/words"
+	"golang.org/x/text/transform"
 )
 
 var all = flag.Bool("all", false, "include all tokens, such as whitespace and punctuation, not just 'words'")
+var lower = flag.Bool("lower", false, "transform tokens to lower case")
+var upper = flag.Bool("upper", false, "transform tokens to UPPER case")
+var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic marks, such as accents, like açaí → acai")
+
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
 
 type config struct {
-	In        *bufio.Reader
-	HasIn     bool
-	Delimiter string
-	Out       *bufio.Writer
-	All       bool
+	In         *bufio.Reader
+	HasIn      bool
+	Delimiter  string
+	Out        *bufio.Writer
+	All        bool
+	Lower      bool
+	Upper      bool
+	Diacritics bool
 }
 
 func main() {
@@ -55,7 +64,7 @@ finish:
 
 func getConfig() (*config, error) {
 	c := &config{
-		Out: bufio.NewWriter(os.Stdout),
+		Out: bufio.NewWriterSize(os.Stdout, 64*1024),
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -65,12 +74,15 @@ func getConfig() (*config, error) {
 
 	piped := (fi.Mode() & os.ModeCharDevice) == 0 // https://stackoverflow.com/a/43947435
 	if piped {
-		c.In = bufio.NewReader(os.Stdin)
+		c.In = bufio.NewReaderSize(os.Stdin, 64*1024)
 		c.HasIn = true
 	}
 
 	flag.Parse()
 	c.All = *all
+	c.Lower = *lower
+	c.Upper = *upper
+	c.Diacritics = *diacritics
 
 	if len(*delimiter) == 0 {
 		c.Delimiter = "\n"
@@ -89,6 +101,20 @@ func getConfig() (*config, error) {
 func writeWords(c *config) error {
 	first := true
 	sc := words.NewScanner(c.In)
+
+	var transforms []transform.Transformer
+	if c.Lower {
+		transforms = append(transforms, transformer.Lower)
+	}
+	if c.Upper {
+		transforms = append(transforms, transformer.Upper)
+	}
+	if c.Diacritics {
+		transforms = append(transforms, transformer.Diacritics)
+	}
+	if len(transforms) > 0 {
+		sc.Transform(transforms...)
+	}
 
 	if !c.All {
 		sc.Filter(filter.Wordlike)
