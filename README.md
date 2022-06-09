@@ -44,27 +44,4 @@ The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is 
 
 ### Options
 
-To see usage, just type the `words` command without arguments or input.
-
-`-all`
-
-By default, only ‘word’ tokens will be returned, omitting whitespace and punctuation tokens. Specify `-all` to return all tokens, i.e. 100% of the bytes.
-
-`-delimiter`
-
-A string separator to use between output tokens, default is `"\n"`. You can use escapes like `"\t"` for tab. It’s best to quote this parameter.
-
-`-lower`
-
-Lowercase the words.
-
-`-upper`
-
-UPPERCASE the words, if you must.
-
-`-diacritics`
-
-‘Flatten’ words with diacritics, such as accents. For example, açaí → acai.
-
-
-
+To see usage, just type the `words` command without arguments or input. There are transforms (e.g. lowercasing) and filter options and such.
