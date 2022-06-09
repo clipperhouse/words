@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
@@ -21,6 +20,7 @@ var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic ma
 
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
+var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese romanian, russian,\nspanish, swedish, tamil, turkish")
 
 type config struct {
 	In         *bufio.Reader
@@ -31,7 +31,10 @@ type config struct {
 	Lower      bool
 	Upper      bool
 	Diacritics bool
+	Stemmer    transform.Transformer
 }
+
+var appName string = os.Args[0]
 
 func main() {
 	config, err := getConfig()
@@ -95,6 +98,14 @@ func getConfig() (*config, error) {
 		c.Delimiter = d
 	}
 
+	if isFlagPassed("stem") {
+		stemmer, ok := stemmerMap[*stem]
+		if !ok {
+			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
+		}
+		c.Stemmer = stemmer
+	}
+
 	return c, nil
 }
 
@@ -103,14 +114,17 @@ func writeWords(c *config) error {
 	sc := words.NewScanner(c.In)
 
 	var transforms []transform.Transformer
+	if c.Diacritics {
+		transforms = append(transforms, transformer.Diacritics)
+	}
 	if c.Lower {
 		transforms = append(transforms, transformer.Lower)
 	}
 	if c.Upper {
 		transforms = append(transforms, transformer.Upper)
 	}
-	if c.Diacritics {
-		transforms = append(transforms, transformer.Diacritics)
+	if c.Stemmer != nil {
+		transforms = append(transforms, c.Stemmer)
 	}
 	if len(transforms) > 0 {
 		sc.Transform(transforms...)
@@ -143,7 +157,8 @@ func writeWords(c *config) error {
 }
 
 func handle(err error) {
-	log.Fatalln(err)
+	os.Stderr.WriteString(err.Error() + "\n")
+	os.Exit(1)
 }
 
 func printUsage() {
