@@ -23,6 +23,8 @@ var delimiter = flag.String("delimiter", "", `separator to use between output to
 you can use escaped literals like "\t".`)
 var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
 
+var v = flag.Bool("version", false, "print the current version and SHA")
+
 type config struct {
 	In           *bufio.Reader
 	HasIn        bool
@@ -37,11 +39,19 @@ type config struct {
 }
 
 var appName string = os.Args[0]
+var version string
+var commit string
 
 func main() {
+
 	config, err := getConfig()
 	if err != nil {
 		handle(err)
+	}
+
+	if *v {
+		printVersion()
+		goto finish
 	}
 
 	if !config.HasIn {
@@ -175,6 +185,8 @@ func handle(err error) {
 }
 
 func printUsage() {
+	flag.Usage()
+
 	message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
 	message += "\nDetails:\n"
 	message += "  words accepts stdin, splits into one word (token) per line,\n"
@@ -182,11 +194,16 @@ func printUsage() {
 	message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
 	message += "  by default, only tokens containing one or more letters,\n"
 	message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
-	message += "  whitespace and punctuation tokens are omitted"
-
-	flag.Usage()
+	message += "  whitespace and punctuation tokens are omitted\n\n"
 
 	os.Stderr.WriteString(message)
+
+	printVersion()
+}
+
+func printVersion() {
+	v := fmt.Sprintf("Version: %s, SHA: %s\n", version, commit)
+	os.Stderr.WriteString(v)
 }
 
 // https://stackoverflow.com/a/54747682
