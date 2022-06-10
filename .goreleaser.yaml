@@ -30,3 +30,29 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
+
+brews:
+  -
+    # Name template of the recipe
+    # Default to project name
+    name: words
+
+    # Github repository to push the tap to.
+    tap:
+      owner: clipperhouse
+      name: homebrew-tap
+
+    # Git author used to commit to the repository.
+    # Defaults are shown.
+    commit_author:
+      name: clipperhouse
+      email: mwsherman@gmail.com
+
+    # Your app's homepage.
+    # Default is empty.
+    homepage: "https://github.com/clipperhouse/words"
+
+    # Your app's description.
+    # Default is empty.
+    description: "A command-line utility for splitting words by the Unicode standard"
+
