@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/clipperhouse/uax29/iterators/filter"
 	"github.com/clipperhouse/uax29/iterators/transformer"
@@ -20,18 +21,19 @@ var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic ma
 
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
-var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese romanian, russian,\nspanish, swedish, tamil, turkish")
+var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
 
 type config struct {
-	In         *bufio.Reader
-	HasIn      bool
-	Delimiter  string
-	Out        *bufio.Writer
-	All        bool
-	Lower      bool
-	Upper      bool
-	Diacritics bool
-	Stemmer    transform.Transformer
+	In           *bufio.Reader
+	HasIn        bool
+	Delimiter    string
+	Out          *bufio.Writer
+	All          bool
+	Lower        bool
+	Upper        bool
+	Diacritics   bool
+	Stemmer      transform.Transformer
+	Transformers []transform.Transformer
 }
 
 var appName string = os.Args[0]
@@ -87,6 +89,38 @@ func getConfig() (*config, error) {
 	c.Upper = *upper
 	c.Diacritics = *diacritics
 
+	if isFlagPassed("stem") {
+		stemmer, ok := stemmerMap[*stem]
+		if !ok {
+			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
+		}
+		c.Stemmer = stemmer
+	}
+
+	// respect order of transforms
+	for _, arg := range os.Args {
+		// ugh
+		arg = strings.Split(arg, "=")[0]
+		arg = strings.TrimLeft(arg, "-")
+		arg = strings.ToLower(arg)
+
+		fl := flag.Lookup(arg)
+		if fl == nil {
+			continue
+		}
+
+		switch {
+		case c.Diacritics && fl.Name == "diacritics":
+			c.Transformers = append(c.Transformers, transformer.Diacritics)
+		case c.Lower && fl.Name == "lower":
+			c.Transformers = append(c.Transformers, transformer.Lower)
+		case c.Upper && fl.Name == "upper":
+			c.Transformers = append(c.Transformers, transformer.Upper)
+		case c.Stemmer != nil && fl.Name == "stem":
+			c.Transformers = append(c.Transformers, c.Stemmer)
+		}
+	}
+
 	if !isFlagPassed("delimiter") {
 		c.Delimiter = "\n"
 	} else {
@@ -98,42 +132,21 @@ func getConfig() (*config, error) {
 		c.Delimiter = d
 	}
 
-	if isFlagPassed("stem") {
-		stemmer, ok := stemmerMap[*stem]
-		if !ok {
-			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
-		}
-		c.Stemmer = stemmer
-	}
-
 	return c, nil
 }
 
 func writeWords(c *config) error {
-	first := true
 	sc := words.NewScanner(c.In)
 
-	var transforms []transform.Transformer
-	if c.Diacritics {
-		transforms = append(transforms, transformer.Diacritics)
-	}
-	if c.Lower {
-		transforms = append(transforms, transformer.Lower)
-	}
-	if c.Upper {
-		transforms = append(transforms, transformer.Upper)
-	}
-	if c.Stemmer != nil {
-		transforms = append(transforms, c.Stemmer)
-	}
-	if len(transforms) > 0 {
-		sc.Transform(transforms...)
+	if len(c.Transformers) > 0 {
+		sc.Transform(c.Transformers...)
 	}
 
 	if !c.All {
 		sc.Filter(filter.Wordlike)
 	}
 
+	first := true
 	for sc.Scan() {
 		if !first {
 			_, err := c.Out.WriteString(c.Delimiter)
