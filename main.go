@@ -23,7 +23,10 @@ var count = flag.Bool("count", false, "'count the number of words")
 
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
-var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
+
+const stemlangs = "arabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish"
+
+var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\n"+stemlangs)
 
 var v = flag.Bool("version", false, "print the current version and SHA")
 
@@ -95,7 +98,7 @@ func getConfig() (*config, error) {
 	if isFlagPassed("stem") {
 		_, ok := stemmerMap[strings.ToLower(c.Stemmer)]
 		if !ok {
-			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", c.Stemmer, appName)
+			return nil, fmt.Errorf("unknown stemmer language %q; options are:\n%s", c.Stemmer, stemlangs)
 		}
 	}
 
