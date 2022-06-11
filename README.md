@@ -46,6 +46,8 @@ The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is 
 
 To see usage, just type the `words` command without arguments or input.
 
-By default, `words` returns only tokens that contain letters, numbers or symbols -- whitespace and punctuation are ommitted. If you’d like all the tokens (including whitespace & punctuation), use the `-all` flag.
+By default, `words` returns only tokens that contain letters, numbers or symbols -- whitespace and punctuation are omitted. If you’d like all the tokens (including whitespace & punctuation), use the `-all` flag.
 
-You can transform the tokens as well. `-lower` and `-upper` will transform the case. `-diacritics` will ‘flatten’ accents and such, like açaí → acai. `-stem=<language>` will trim words to their roots (using [this package](https://github.com/clipperhouse/stemmer)).
+The default delimiter between for the output words is `\n`. Use the `-delimiter` flag to change it.
+
+`-lower` and `-upper` will transform the case. `-diacritics` will ‘flatten’ accents and such, like açaí → acai. `-stem=<language>` will trim words to their roots (see [this package](https://github.com/clipperhouse/stemmer)).

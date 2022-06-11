@@ -100,7 +100,7 @@ func getConfig() (*config, error) {
 	c.Diacritics = *diacritics
 
 	if isFlagPassed("stem") {
-		stemmer, ok := stemmerMap[*stem]
+		stemmer, ok := stemmerMap[strings.ToLower(*stem)]
 		if !ok {
 			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
 		}
