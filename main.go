@@ -19,6 +19,8 @@ var lower = flag.Bool("lower", false, "transform tokens to lower case")
 var upper = flag.Bool("upper", false, "transform tokens to UPPER case")
 var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic marks, such as accents, like açaí → acai")
 
+var count = flag.Bool("count", false, "'count the number of words")
+
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
 var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
@@ -34,6 +36,7 @@ type config struct {
 	Lower        bool
 	Upper        bool
 	Diacritics   bool
+	Count        bool
 	Stemmer      transform.Transformer
 	Transformers []transform.Transformer
 }
@@ -59,7 +62,7 @@ func main() {
 		goto finish
 	}
 
-	err = writeWords(config)
+	err = write(config)
 	if err != nil {
 		handle(err)
 	}
@@ -98,6 +101,7 @@ func getConfig() (*config, error) {
 	c.Lower = *lower
 	c.Upper = *upper
 	c.Diacritics = *diacritics
+	c.Count = *count
 
 	if isFlagPassed("stem") {
 		stemmer, ok := stemmerMap[strings.ToLower(*stem)]
@@ -145,7 +149,7 @@ func getConfig() (*config, error) {
 	return c, nil
 }
 
-func writeWords(c *config) error {
+func write(c *config) error {
 	sc := words.NewScanner(c.In)
 
 	if len(c.Transformers) > 0 {
@@ -157,7 +161,13 @@ func writeWords(c *config) error {
 	}
 
 	first := true
+	count := 0 // count
 	for sc.Scan() {
+		if c.Count {
+			count++
+			continue
+		}
+
 		if !first {
 			_, err := c.Out.WriteString(c.Delimiter)
 			if err != nil {
@@ -174,6 +184,13 @@ func writeWords(c *config) error {
 
 	if sc.Err() != nil {
 		return sc.Err()
+	}
+
+	if c.Count {
+		_, err := c.Out.WriteString(strconv.Itoa(count))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
