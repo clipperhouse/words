@@ -38,33 +38,16 @@ You’ll note that by default, it only outputs ‘words’, defined as any token
 
 Seems like this sort of primitive should exist!
 
-If you’ve ever had to work with ‘words’ in an application, perhaps you made the naïve mistakes that I did. Splitting on whitespace should be good enough...oh but punctuation. Oh, also quotes. Oh, and other languages & scripts. It was always around 95% right, and 5% wrong is a big number.
+If you’ve ever had to work with ‘words’ in an application, perhaps you made the naïve mistakes that I did. Splitting on whitespace should be good enough...oh but punctuation. Oh, also quotes and hyphens. Other languages & scripts. It was always around 95% right, and 5% wrong is a big number.
 
-The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is based handles the above well, across many types of text.
+The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is based handles the above well, across many types of text. It’s a thin shell over [this text segmentation package](https://github.com/clipperhouse/uax29/tree/master/words).
 
 ### Options
 
 To see usage, just type the `words` command without arguments or input.
 
-`-all`
+By default, `words` returns only tokens that contain letters, numbers or symbols -- whitespace and punctuation are omitted. If you’d like all the tokens (including whitespace & punctuation), use the `-all` flag.
 
-By default, only ‘word’ tokens will be returned, omitting whitespace and punctuation tokens. Specify `-all` to return all tokens, i.e. 100% of the bytes.
+The default delimiter between for the output words is `\n`. Use the `-delimiter` flag to change it.
 
-`-delimiter`
-
-A string separator to use between output tokens, default is `"\n"`. You can use escapes like `"\t"` for tab. It’s best to quote this parameter.
-
-`-lower`
-
-Lowercase the words.
-
-`-upper`
-
-UPPERCASE the words, if you must.
-
-`-diacritics`
-
-‘Flatten’ words with diacritics, such as accents. For example, açaí → acai.
-
-
-
+`-lower` and `-upper` will transform the case. `-diacritics` will ‘flatten’ accents and such, like açaí → acai. `-stem=<language>` will trim words to their roots (see [this package](https://github.com/clipperhouse/stemmer)).

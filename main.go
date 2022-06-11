@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/clipperhouse/uax29/iterators/filter"
 	"github.com/clipperhouse/uax29/iterators/transformer"
@@ -21,22 +21,37 @@ var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic ma
 
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
+var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
+
+var v = flag.Bool("version", false, "print the current version and SHA")
 
 type config struct {
-	In         *bufio.Reader
-	HasIn      bool
-	Delimiter  string
-	Out        *bufio.Writer
-	All        bool
-	Lower      bool
-	Upper      bool
-	Diacritics bool
+	In           *bufio.Reader
+	HasIn        bool
+	Delimiter    string
+	Out          *bufio.Writer
+	All          bool
+	Lower        bool
+	Upper        bool
+	Diacritics   bool
+	Stemmer      transform.Transformer
+	Transformers []transform.Transformer
 }
 
+var appName string = os.Args[0]
+var version string
+var commit string
+
 func main() {
+
 	config, err := getConfig()
 	if err != nil {
 		handle(err)
+	}
+
+	if *v {
+		printVersion()
+		goto finish
 	}
 
 	if !config.HasIn {
@@ -84,6 +99,38 @@ func getConfig() (*config, error) {
 	c.Upper = *upper
 	c.Diacritics = *diacritics
 
+	if isFlagPassed("stem") {
+		stemmer, ok := stemmerMap[strings.ToLower(*stem)]
+		if !ok {
+			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
+		}
+		c.Stemmer = stemmer
+	}
+
+	// respect order of transforms
+	for _, arg := range os.Args {
+		// ugh
+		arg = strings.Split(arg, "=")[0]
+		arg = strings.TrimLeft(arg, "-")
+		arg = strings.ToLower(arg)
+
+		fl := flag.Lookup(arg)
+		if fl == nil {
+			continue
+		}
+
+		switch {
+		case c.Diacritics && fl.Name == "diacritics":
+			c.Transformers = append(c.Transformers, transformer.Diacritics)
+		case c.Lower && fl.Name == "lower":
+			c.Transformers = append(c.Transformers, transformer.Lower)
+		case c.Upper && fl.Name == "upper":
+			c.Transformers = append(c.Transformers, transformer.Upper)
+		case c.Stemmer != nil && fl.Name == "stem":
+			c.Transformers = append(c.Transformers, c.Stemmer)
+		}
+	}
+
 	if !isFlagPassed("delimiter") {
 		c.Delimiter = "\n"
 	} else {
@@ -99,27 +146,17 @@ func getConfig() (*config, error) {
 }
 
 func writeWords(c *config) error {
-	first := true
 	sc := words.NewScanner(c.In)
 
-	var transforms []transform.Transformer
-	if c.Lower {
-		transforms = append(transforms, transformer.Lower)
-	}
-	if c.Upper {
-		transforms = append(transforms, transformer.Upper)
-	}
-	if c.Diacritics {
-		transforms = append(transforms, transformer.Diacritics)
-	}
-	if len(transforms) > 0 {
-		sc.Transform(transforms...)
+	if len(c.Transformers) > 0 {
+		sc.Transform(c.Transformers...)
 	}
 
 	if !c.All {
 		sc.Filter(filter.Wordlike)
 	}
 
+	first := true
 	for sc.Scan() {
 		if !first {
 			_, err := c.Out.WriteString(c.Delimiter)
@@ -143,10 +180,13 @@ func writeWords(c *config) error {
 }
 
 func handle(err error) {
-	log.Fatalln(err)
+	os.Stderr.WriteString(err.Error() + "\n")
+	os.Exit(1)
 }
 
 func printUsage() {
+	flag.Usage()
+
 	message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
 	message += "\nDetails:\n"
 	message += "  words accepts stdin, splits into one word (token) per line,\n"
@@ -154,11 +194,16 @@ func printUsage() {
 	message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
 	message += "  by default, only tokens containing one or more letters,\n"
 	message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
-	message += "  whitespace and punctuation tokens are omitted"
-
-	flag.Usage()
+	message += "  whitespace and punctuation tokens are omitted\n\n"
 
 	os.Stderr.WriteString(message)
+
+	printVersion()
+}
+
+func printVersion() {
+	v := fmt.Sprintf("Version: %s, SHA: %s\n", version, commit)
+	os.Stderr.WriteString(v)
 }
 
 // https://stackoverflow.com/a/54747682
