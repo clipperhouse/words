@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -19,6 +19,8 @@ var lower = flag.Bool("lower", false, "transform tokens to lower case")
 var upper = flag.Bool("upper", false, "transform tokens to UPPER case")
 var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic marks, such as accents, like açaí → acai")
 
+var count = flag.Bool("count", false, "'count the number of words")
+
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
 var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to each token. options are:\narabic, danish, dutch, english, finnish, french, german, hungarian,\nirish, italian, norwegian, porter, portuguese, romanian, russian,\nspanish, swedish, tamil, turkish")
@@ -26,16 +28,18 @@ var stem = flag.String("stem", "", "language of a Snowball stemmer to apply to e
 var v = flag.Bool("version", false, "print the current version and SHA")
 
 type config struct {
-	In           *bufio.Reader
-	HasIn        bool
-	Delimiter    string
-	Out          *bufio.Writer
-	All          bool
-	Lower        bool
-	Upper        bool
-	Diacritics   bool
-	Stemmer      transform.Transformer
-	Transformers []transform.Transformer
+	In  io.Reader
+	Out writer
+	Err writer
+
+	Delimiter  string
+	All        bool
+	Lower      bool
+	Upper      bool
+	Diacritics bool
+	Count      bool
+	Stemmer    string
+	Version    bool
 }
 
 var appName string = os.Args[0]
@@ -43,43 +47,31 @@ var version string
 var commit string
 
 func main() {
-
-	config, err := getConfig()
+	c, err := getConfig()
 	if err != nil {
 		handle(err)
 	}
 
-	if *v {
-		printVersion()
-		goto finish
-	}
-
-	if !config.HasIn {
-		printUsage()
-		goto finish
-	}
-
-	err = writeWords(config)
+	err = write(c)
 	if err != nil {
 		handle(err)
 	}
 
-finish:
-	// Finish up
-	_, err = config.Out.WriteString("\n")
-	if err != nil {
-		handle(err)
-	}
-
-	err = config.Out.Flush()
+	_, err = c.Out.WriteString("\n")
 	if err != nil {
 		handle(err)
 	}
 }
 
+type writer interface {
+	io.Writer
+	io.StringWriter
+}
+
 func getConfig() (*config, error) {
 	c := &config{
-		Out: bufio.NewWriterSize(os.Stdout, 64*1024),
+		Out: os.Stdout,
+		Err: os.Stderr,
 	}
 
 	fi, err := os.Stdin.Stat()
@@ -89,67 +81,73 @@ func getConfig() (*config, error) {
 
 	piped := (fi.Mode() & os.ModeCharDevice) == 0 // https://stackoverflow.com/a/43947435
 	if piped {
-		c.In = bufio.NewReaderSize(os.Stdin, 64*1024)
-		c.HasIn = true
+		c.In = os.Stdin
 	}
 
 	flag.Parse()
+
 	c.All = *all
 	c.Lower = *lower
 	c.Upper = *upper
 	c.Diacritics = *diacritics
+	c.Stemmer = *stem
 
 	if isFlagPassed("stem") {
-		stemmer, ok := stemmerMap[strings.ToLower(*stem)]
+		_, ok := stemmerMap[strings.ToLower(c.Stemmer)]
 		if !ok {
-			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
-		}
-		c.Stemmer = stemmer
-	}
-
-	// respect order of transforms
-	for _, arg := range os.Args {
-		// ugh
-		arg = strings.Split(arg, "=")[0]
-		arg = strings.TrimLeft(arg, "-")
-		arg = strings.ToLower(arg)
-
-		fl := flag.Lookup(arg)
-		if fl == nil {
-			continue
-		}
-
-		switch {
-		case c.Diacritics && fl.Name == "diacritics":
-			c.Transformers = append(c.Transformers, transformer.Diacritics)
-		case c.Lower && fl.Name == "lower":
-			c.Transformers = append(c.Transformers, transformer.Lower)
-		case c.Upper && fl.Name == "upper":
-			c.Transformers = append(c.Transformers, transformer.Upper)
-		case c.Stemmer != nil && fl.Name == "stem":
-			c.Transformers = append(c.Transformers, c.Stemmer)
+			return nil, fmt.Errorf("unknown stemmer %q; type %q command for usage", c.Stemmer, appName)
 		}
 	}
 
-	if !isFlagPassed("delimiter") {
-		c.Delimiter = "\n"
+	c.Count = *count
+	c.Version = *v
+
+	if isFlagPassed("delimiter") {
+		c.Delimiter = *delimiter
 	} else {
-		d, err := strconv.Unquote(`"` + *delimiter + `"`) // https://stackoverflow.com/a/59952849
-		if err != nil {
-			return nil, fmt.Errorf("couldn't parse delimiter %q: %v", *delimiter, err)
-
-		}
-		c.Delimiter = d
+		c.Delimiter = `\n` // don't use "", we want to test the parsing in write()
 	}
 
 	return c, nil
 }
 
-func writeWords(c *config) error {
+func write(c *config) error {
+	if c.Version {
+		return printVersion(c)
+	}
+
+	if c.In == nil {
+		return printUsage(c)
+	}
+
+	d, err := strconv.Unquote(`"` + c.Delimiter + `"`) // https://stackoverflow.com/a/59952849
+	if err != nil {
+		return fmt.Errorf("couldn't parse delimiter %q: %v", c.Delimiter, err)
+	}
+	c.Delimiter = d
+
 	sc := words.NewScanner(c.In)
 
-	if len(c.Transformers) > 0 {
-		sc.Transform(c.Transformers...)
+	var transformers []transform.Transformer
+	if c.Diacritics {
+		transformers = append(transformers, transformer.Diacritics)
+	}
+	if c.Lower {
+		transformers = append(transformers, transformer.Lower)
+	}
+	if c.Upper {
+		transformers = append(transformers, transformer.Upper)
+	}
+	if c.Stemmer != "" {
+		stemmer, ok := stemmerMap[strings.ToLower(c.Stemmer)]
+		if !ok {
+			// a little redundant with above, but meh
+			return fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
+		}
+		transformers = append(transformers, stemmer)
+	}
+	if len(transformers) > 0 {
+		sc.Transform(transformers...)
 	}
 
 	if !c.All {
@@ -157,7 +155,13 @@ func writeWords(c *config) error {
 	}
 
 	first := true
+	count := 0
 	for sc.Scan() {
+		if c.Count {
+			count++
+			continue
+		}
+
 		if !first {
 			_, err := c.Out.WriteString(c.Delimiter)
 			if err != nil {
@@ -176,6 +180,13 @@ func writeWords(c *config) error {
 		return sc.Err()
 	}
 
+	if c.Count {
+		_, err := c.Out.WriteString(strconv.Itoa(count))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -184,26 +195,37 @@ func handle(err error) {
 	os.Exit(1)
 }
 
-func printUsage() {
+func printUsage(c *config) error {
 	flag.Usage()
 
-	message := "\nExample:\n  echo \"Hello, 世界. Nice dog! 👍🐶\" | words\n"
-	message += "\nDetails:\n"
-	message += "  words accepts stdin, splits into one word (token) per line,\n"
-	message += "  and writes to stdout\n\n"
-	message += "  word boundaries are defined by Unicode, specifically UAX #29.\n"
-	message += "  by default, only tokens containing one or more letters,\n"
-	message += "  numbers, or symbols (as defined by Unicode) are returned;\n"
-	message += "  whitespace and punctuation tokens are omitted\n\n"
+	const message = `
+Example:
+  echo "Hello, 世界. Nice dog! 👍🐶" | words
 
-	os.Stderr.WriteString(message)
+Details:
+  words accepts stdin, splits into one word (token) per line,
+  and writes to stdout
 
-	printVersion()
+  word boundaries are defined by Unicode, specifically UAX #29.
+  by default, only tokens containing one or more letters,
+  numbers, or symbols (as defined by Unicode) are returned;
+  whitespace and punctuation tokens are omitted
+
+`
+
+	_, err := c.Err.WriteString(message)
+	if err != nil {
+		return err
+	}
+
+	err = printVersion(c)
+	return err
 }
 
-func printVersion() {
+func printVersion(c *config) error {
 	v := fmt.Sprintf("Version: %s, SHA: %s\n", version, commit)
-	os.Stderr.WriteString(v)
+	_, err := c.Err.WriteString(v)
+	return err
 }
 
 // https://stackoverflow.com/a/54747682
