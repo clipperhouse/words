@@ -84,25 +84,51 @@ func TestUpperLower(t *testing.T) {
 func TestDiacritics(t *testing.T) {
 	text := "I am reading a résumé in Malmö"
 
-	var w, werr bytes.Buffer
-	r := strings.NewReader(text)
-	c := &config{
-		Diacritics: true,
-		In:         r,
-		Out:        &w,
-		Err:        &werr,
+	{
+		var w, werr bytes.Buffer
+		r := strings.NewReader(text)
+		c := &config{
+			Diacritics: true,
+			In:         r,
+			Out:        &w,
+			Err:        &werr,
+		}
+
+		err := write(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expected := "IamreadingaresumeinMalmo"
+		got := w.String()
+
+		if expected != got {
+			t.Fatalf("expected %q, got %q", expected, got)
+		}
 	}
 
-	err := write(c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	{
+		var w, werr bytes.Buffer
+		r := strings.NewReader(text)
+		c := &config{
+			Diacritics: true,
+			Lower:      true,
+			In:         r,
+			Out:        &w,
+			Err:        &werr,
+		}
 
-	expected := "IamreadingaresumeinMalmo"
-	got := w.String()
+		err := write(c)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if expected != got {
-		t.Fatalf("expected %q, got %q", expected, got)
+		expected := "iamreadingaresumeinmalmo"
+		got := w.String()
+
+		if expected != got {
+			t.Fatalf("expected %q, got %q", expected, got)
+		}
 	}
 }
 
@@ -193,6 +219,30 @@ func TestCount(t *testing.T) {
 		}
 
 		expected := "5"
+		got := w.String()
+
+		if expected != got {
+			t.Fatalf("expected count of %q, got %q", expected, got)
+		}
+	}
+
+	{
+		var w, werr bytes.Buffer
+		r := strings.NewReader(text)
+		c := &config{
+			Count: true,
+			All:   true,
+			In:    r,
+			Out:   &w,
+			Err:   &werr,
+		}
+
+		err := write(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expected := "9"
 		got := w.String()
 
 		if expected != got {
