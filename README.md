@@ -10,7 +10,7 @@ Binaries are available on the [Releases page](https://github.com/clipperhouse/wo
 
 If you have [Homebrew](https://brew.sh):
 ```
-brew install clipperhouse/homebrew-tap/words
+brew install clipperhouse/brew/words
 ```
 
 If you have a [Go installation](https://go.dev/doc/install):
