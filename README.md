@@ -8,9 +8,15 @@ Splitting words by the above standard is more likely to give consistent results;
 
 Binaries are available on the [Releases page](https://github.com/clipperhouse/words/releases).
 
---
+If you have [Homebrew](https://brew.sh):
+```
+brew install clipperhouse/homebrew-tap/words
+```
 
-If you have a [Go installation](https://go.dev/doc/install), you can also `go install github.com/clipperhouse/words`.
+If you have a [Go installation](https://go.dev/doc/install):
+```
+go install github.com/clipperhouse/words
+```
 
 ### Example
 
@@ -36,18 +42,20 @@ You’ll note that by default, it only outputs ‘words’, defined as any token
 
 ### Motivation
 
-Seems like this sort of primitive should exist!
+Seems like this sort of primitive should exist.
 
-If you’ve ever had to work with ‘words’ in an application, perhaps you made the naïve mistakes that I did. Splitting on whitespace should be good enough...oh but punctuation. Oh, also quotes and hyphens. Other languages & scripts. It was always around 95% right, and 5% wrong is a big number.
+If you’ve ever had to work with ‘words’ in an application, perhaps you made the naive mistakes that I did. Splitting on whitespace should be good enough...oh but punctuation. Oh, also quotes and hyphens. Different languages & scripts. It was always around 95% right, and 5% wrong is a big number.
 
-The [Unicode standard](https://unicode.org/reports/tr29/) on which this tool is based handles the above well, across many types of text. It’s a thin shell over [this text segmentation package](https://github.com/clipperhouse/uax29/tree/master/words).
+The [Unicode standard](https://unicode.org/reports/tr29/) handles the above well, across many types of text. This tool is a thin shell over [this text segmentation package](https://github.com/clipperhouse/uax29/tree/master/words).
 
 ### Options
 
 To see usage, just type the `words` command without arguments or input.
 
-By default, `words` returns only tokens that contain letters, numbers or symbols -- whitespace and punctuation are omitted. If you’d like all the tokens (including whitespace & punctuation), use the `-all` flag.
+By default, `words` returns only tokens that contain letters, numbers or symbols - whitespace and punctuation are omitted. If you’d like all the tokens (including whitespace & punctuation), use the `-all` flag.
 
 The default delimiter between for the output words is `\n`. Use the `-delimiter` flag to change it.
 
 `-lower` and `-upper` will transform the case. `-diacritics` will ‘flatten’ accents and such, like açaí → acai. `-stem=<language>` will trim words to their roots (see [this package](https://github.com/clipperhouse/stemmer)).
+
+`-count` will count the words.
