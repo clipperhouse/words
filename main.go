@@ -19,7 +19,7 @@ var lower = flag.Bool("lower", false, "transform tokens to lower case")
 var upper = flag.Bool("upper", false, "transform tokens to UPPER case")
 var diacritics = flag.Bool("diacritics", false, "'flatten' / remove diacritic marks, such as accents, like açaí → acai")
 
-var count = flag.Bool("count", false, "'count the number of words")
+var count = flag.Bool("count", false, "count the number of words")
 
 var delimiter = flag.String("delimiter", "", `separator to use between output tokens, default is "\n".
 you can use escaped literals like "\t".`)
@@ -45,7 +45,6 @@ type config struct {
 	Version    bool
 }
 
-var appName string = os.Args[0]
 var version string
 var commit string
 
@@ -127,7 +126,7 @@ func write(c *config) error {
 	if err != nil {
 		return fmt.Errorf("couldn't parse delimiter %q: %v", c.Delimiter, err)
 	}
-	c.Delimiter = d
+	delimiter := []byte(d)
 
 	sc := words.NewScanner(c.In)
 
@@ -145,7 +144,7 @@ func write(c *config) error {
 		stemmer, ok := stemmerMap[strings.ToLower(c.Stemmer)]
 		if !ok {
 			// a little redundant with above, but meh
-			return fmt.Errorf("unknown stemmer %q; type %q command for usage", *stem, appName)
+			return fmt.Errorf("unknown stemmer language %q; options are:\n%s", c.Stemmer, stemlangs)
 		}
 		transformers = append(transformers, stemmer)
 	}
@@ -166,7 +165,7 @@ func write(c *config) error {
 		}
 
 		if !first {
-			_, err := c.Out.WriteString(c.Delimiter)
+			_, err := c.Out.Write(delimiter)
 			if err != nil {
 				return err
 			}
@@ -198,10 +197,7 @@ func handle(err error) {
 	os.Exit(1)
 }
 
-func printUsage(c *config) error {
-	flag.Usage()
-
-	const message = `
+var usage = []byte(`
 Example:
   echo "Hello, 世界. Nice dog! 👍🐶" | words
 
@@ -214,9 +210,12 @@ Details:
   numbers, or symbols (as defined by Unicode) are returned;
   whitespace and punctuation tokens are omitted
 
-`
+`)
 
-	_, err := c.Err.WriteString(message)
+func printUsage(c *config) error {
+	flag.Usage()
+
+	_, err := c.Err.Write(usage)
 	if err != nil {
 		return err
 	}
