@@ -8,10 +8,11 @@ Splitting words by the above standard is more likely to give consistent results;
 
 Binaries are available on the [Releases page](https://github.com/clipperhouse/words/releases).
 
-If you have [Homebrew](https://brew.sh):
+If you have [Homebrew](https://brew.sh) ([formula](https://github.com/clipperhouse/homebrew-tap/blob/master/words.rb)):
 ```
 brew install clipperhouse/tap/words
 ```
+
 
 If you have a [Go installation](https://go.dev/doc/install):
 ```
